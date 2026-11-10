@@ -2,8 +2,9 @@
 
 import type { FormEvent } from 'react';
 import { CANAIS, ORIGENS, etapa } from '@/lib/constantes';
-import { abertasCliente, cliente, comprasCliente, produto, somaValor, statusCliente, ultimoContato, valorOp } from '@/lib/calculos';
-import { BRL, BRL0, NUM, fmtData, relDias, uid } from '@/lib/formato';
+import { api } from '@/lib/api';
+import { abertasCliente, cliente, comprasCliente, nomeUsuario, produto, somaValor, statusCliente, ultimoContato, valorOp } from '@/lib/calculos';
+import { BRL, BRL0, NUM, fmtData, relDias } from '@/lib/formato';
 import { useCrm } from './crm-provider';
 import { DlgHead, Modal } from './modal';
 
@@ -17,7 +18,7 @@ export function ClienteDrawer({ id }: { id: string | null }) {
 }
 
 function FichaCliente({ id }: { id: string }) {
-  const { db, alterar, toast, abrirOp, abrirFormCli, fecharDrawer } = useCrm();
+  const { db, executar, abrirOp, abrirFormCli, fecharDrawer } = useCrm();
   const c = cliente(db, id)!;
   const compras = comprasCliente(db, id);
   const abertas = abertasCliente(db, id);
@@ -26,15 +27,12 @@ function FichaCliente({ id }: { id: string }) {
   const ints = db.interacoes.filter(i => i.clienteId === id).sort((a, b) => b.data - a.data);
   const wpp = (c.whatsapp || '').replace(/\D/g, '');
 
-  function registrar(e: FormEvent<HTMLFormElement>) {
+  async function registrar(e: FormEvent<HTMLFormElement>) {
     e.preventDefault();
     const form = e.currentTarget;
     const fd = new FormData(form);
-    alterar(d => {
-      d.interacoes.push({ id: uid(), clienteId: id, data: Date.now(), canal: String(fd.get('canal')), nota: String(fd.get('nota')), responsavel: c.responsavel });
-    });
-    form.reset();
-    toast('Contato registrado.');
+    const ok = await executar(() => api.registrarInteracao(id, String(fd.get('canal')), String(fd.get('nota'))), 'Contato registrado.');
+    if (ok !== false) form.reset();
   }
 
   return (
@@ -46,7 +44,7 @@ function FichaCliente({ id }: { id: string }) {
       </DlgHead>
       <div className="dlg-body">
         <div className="toolbar">
-          <button className="btn primary sm" onClick={() => abrirOp({ clienteId: id, etapa: 'novo', responsavel: c.responsavel, origem: ORIGENS[0], itens: [] })}>
+          <button className="btn primary sm" onClick={() => abrirOp({ clienteId: id, etapa: 'novo', responsavelId: c.responsavelId, origem: ORIGENS[0], itens: [] })}>
             + Nova oportunidade
           </button>
           <button className="btn sm" onClick={() => abrirFormCli(c)}>
@@ -61,7 +59,7 @@ function FichaCliente({ id }: { id: string }) {
         </div>
         <dl className="facts">
           <div><dt>CPF / CNPJ</dt><dd className="mono">{c.doc || '—'}</dd></div>
-          <div><dt>Responsável</dt><dd>{c.responsavel || '—'}</dd></div>
+          <div><dt>Responsável</dt><dd>{nomeUsuario(db, c.responsavelId)}</dd></div>
           <div><dt>Telefone</dt><dd>{c.tel || '—'}</dd></div>
           <div>
             <dt>WhatsApp</dt>
@@ -142,7 +140,7 @@ function FichaCliente({ id }: { id: string }) {
             {ints.length ? ints.map(i => (
               <div className="tl-item" key={i.id}>
                 <div className="when">{fmtData(i.data)}<br />{i.canal}</div>
-                <div>{i.nota}<div className="muted" style={{ fontSize: 12 }}>{i.responsavel}</div></div>
+                <div>{i.nota}<div className="muted" style={{ fontSize: 12 }}>{i.usuarioId ? nomeUsuario(db, i.usuarioId) : ''}</div></div>
               </div>
             )) : <p className="empty" style={{ margin: 0 }}>Nenhum contato registrado.</p>}
           </div>

@@ -244,3 +244,27 @@ textarea.code { font: 12px/1.4 var(--f-mono); min-height: 140px; width: 100%; bo
 a.btn { text-decoration: none; color: inherit; }
 a.btn.primary { color: var(--accent-ink); }
 .carregando { padding: 40px 28px; color: var(--muted); }
+
+/* Login */
+.login-wrap { min-height: 100%; display: grid; place-items: center; padding: 24px 16px; background: var(--side); }
+.login { width: min(380px, 100%); background: var(--surface); border-radius: 14px; padding: 28px 24px; display: flex; flex-direction: column; gap: 16px; box-shadow: 0 24px 64px rgba(0,0,0,.3); }
+.login-brand { padding: 0; color: var(--ink); }
+.login-brand .brand-sub { color: var(--muted); }
+.login-btn { justify-content: center; padding: 10px 14px; }
+.login-btn:disabled { opacity: .7; cursor: wait; }
+.login-erro { margin: 0; background: var(--bad-soft); color: var(--bad); border-radius: 8px; padding: 8px 12px; font-size: 13px; }
+
+/* Usuário logado na barra lateral */
+.side-user { margin-top: auto; display: flex; flex-direction: column; gap: 6px; padding: 10px 8px 0; border-top: 1px solid var(--side-hover); }
+.side-user .nome { font-weight: 600; font-size: 13px; color: var(--side-ink); }
+.side-user .papel { font-size: 11px; color: var(--side-muted); }
+.side-user button { align-self: flex-start; background: none; border: 1px solid var(--side-hover); color: var(--side-muted); border-radius: 6px; padding: 4px 10px; font-size: 12px; cursor: pointer; }
+.side-user button:hover { color: var(--side-ink); border-color: var(--side-muted); }
+.side-foot { margin-top: 0; }
+.user-row { display: grid; grid-template-columns: minmax(0, 1fr) auto; gap: 4px 10px; align-items: center; padding: 8px 0; border-top: 1px solid var(--line); }
+.user-row:first-child { border-top: 0; padding-top: 0; }
+@media (max-width: 760px) {
+  .side-user { margin-top: 0; margin-left: auto; border-top: 0; padding: 0; flex-direction: row; align-items: center; }
+  .side-user .nome, .side-user .papel { display: none; }
+}
+@media (max-width: 760px) { .login-brand .brand-name, .login-brand .brand-sub { display: block; } }

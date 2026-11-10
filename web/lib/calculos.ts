@@ -7,8 +7,12 @@ export const valorOp = (o: Pick<Oportunidade, 'itens'>) =>
 export const kgOp = (o: Pick<Oportunidade, 'itens'>) => o.itens.reduce((s, i) => s + (+i.kg || 0), 0);
 export const somaValor = (ops: Oportunidade[]) => ops.reduce((a, o) => a + valorOp(o), 0);
 
-export const produto = (db: Db, id: string) => db.config.produtos.find(p => p.id === id);
+export const produto = (db: Db, id: string) => db.produtos.find(p => p.id === id);
 export const cliente = (db: Db, id: string) => db.clientes.find(c => c.id === id);
+export const nomeUsuario = (db: Db, id: string | null | undefined) => (id && db.usuarios.find(u => u.id === id)?.nome) || '—';
+/** Quem pode ser responsável por clientes e oportunidades: usuários ativos. */
+export const responsaveis = (db: Db) => db.usuarios.filter(u => u.ativo);
+export const produtosAtivos = (db: Db) => db.produtos.filter(p => p.ativo);
 
 export const vendas = (db: Db) => db.oportunidades.filter(o => o.etapa === 'ganha');
 export const vendasEntre = (db: Db, s: number, e: number) =>
@@ -74,10 +78,3 @@ export const porPrazo = (a: Oportunidade, b: Oportunidade) =>
 
 export const atrasada = (o: Oportunidade) =>
   ABERTAS.includes(o.etapa) && !!o.prazo && parseDia(o.prazo)! < inicioDia(Date.now());
-
-/** Marca ou limpa a data de fechamento quando a oportunidade muda de etapa. */
-export function ajustaFechamento(o: Oportunidade, antes: Oportunidade['etapa'] | undefined) {
-  const fechada = o.etapa === 'ganha' || o.etapa === 'perdida';
-  if (fechada && (!o.fechadoEm || antes !== o.etapa)) o.fechadoEm = Date.now();
-  if (!fechada) o.fechadoEm = null;
-}

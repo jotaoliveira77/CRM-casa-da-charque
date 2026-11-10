@@ -2,6 +2,7 @@
 
 import Link from 'next/link';
 import { usePathname } from 'next/navigation';
+import { useCrm } from './crm-provider';
 
 const svg = { viewBox: '0 0 24 24', fill: 'none', stroke: 'currentColor', strokeWidth: 2, strokeLinecap: 'round', strokeLinejoin: 'round' } as const;
 
@@ -27,6 +28,7 @@ const ITENS = [
 
 export function Sidebar() {
   const pathname = usePathname();
+  const { usuario, sair } = useCrm();
   return (
     <aside className="side">
       <div className="brand">
@@ -44,6 +46,11 @@ export function Sidebar() {
           </Link>
         ))}
       </nav>
+      <div className="side-user">
+        <span className="nome">{usuario.nome}</span>
+        <span className="papel">{usuario.papel === 'ADMIN' ? 'Gerência' : 'Vendedor'}</span>
+        <button type="button" onClick={sair}>Sair</button>
+      </div>
       <div className="side-foot">
         Projeto de Intervenção · Grupo 10
         <br />

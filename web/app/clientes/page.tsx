@@ -4,11 +4,11 @@ import { useState } from 'react';
 import { useCrm } from '@/components/crm-provider';
 import { BannerExemplo } from '@/components/banner-exemplo';
 import { SITUACOES, TIPOS } from '@/lib/constantes';
-import { comprasCliente, somaValor, statusCliente, ultimoContato } from '@/lib/calculos';
+import { comprasCliente, nomeUsuario, somaValor, statusCliente, ultimoContato } from '@/lib/calculos';
 import { BRL0, relDias } from '@/lib/formato';
 
 export default function ClientesPage() {
-  const { db, abrirCli, abrirFormCli } = useCrm();
+  const { db, usuario, abrirCli, abrirFormCli } = useCrm();
   const [busca, setBusca] = useState('');
   const [tipo, setTipo] = useState('');
   const [situacao, setSituacao] = useState('');
@@ -45,7 +45,7 @@ export default function ClientesPage() {
             <option value="">Todas as situações</option>
             {SITUACOES.map(t => <option key={t}>{t}</option>)}
           </select>
-          <button className="btn primary" onClick={() => abrirFormCli({ responsavel: db.config.responsaveis[0] })}>
+          <button className="btn primary" onClick={() => abrirFormCli({ responsavelId: usuario.id })}>
             + Novo cliente
           </button>
         </div>
@@ -69,7 +69,7 @@ export default function ClientesPage() {
                   </td>
                   <td>{x.c.tipo}</td>
                   <td>{x.c.cidade}/{x.c.uf}</td>
-                  <td>{x.c.responsavel}</td>
+                  <td>{nomeUsuario(db, x.c.responsavelId)}</td>
                   <td>{relDias(x.ult)}</td>
                   <td className="num">{x.compras.length}</td>
                   <td className="num">{BRL0.format(x.total)}</td>
