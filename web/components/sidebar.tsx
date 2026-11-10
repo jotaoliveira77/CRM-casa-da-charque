@@ -32,11 +32,9 @@ export function Sidebar() {
   return (
     <aside className="side">
       <div className="brand">
-        <div className="brand-mark" aria-hidden="true">CC</div>
-        <div>
-          <div className="brand-name">Casa da Charque</div>
-          <div className="brand-sub">CRM · CEASA Recife</div>
-        </div>
+        {/* eslint-disable-next-line @next/next/no-img-element -- logo fixa e pequena, sem necessidade de otimização */}
+        <img className="brand-logo" src="/logo-casa-da-charque.png" alt="Casa da Charque CEASA" width={440} height={250} />
+        <div className="brand-sub">CRM comercial</div>
       </div>
       <nav className="nav" aria-label="Seções">
         {ITENS.map(i => (

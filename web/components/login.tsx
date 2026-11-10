@@ -24,13 +24,8 @@ export function Login({ onEntrar }: { onEntrar: () => void }) {
   return (
     <div className="login-wrap">
       <form className="login" onSubmit={entrar}>
-        <div className="brand login-brand">
-          <div className="brand-mark" aria-hidden="true">CC</div>
-          <div>
-            <div className="brand-name">Casa da Charque</div>
-            <div className="brand-sub">CRM · CEASA Recife</div>
-          </div>
-        </div>
+        {/* eslint-disable-next-line @next/next/no-img-element -- logo fixa e pequena, sem necessidade de otimização */}
+        <img className="login-logo" src="/logo-casa-da-charque.png" alt="Casa da Charque CEASA" width={440} height={250} />
         <div>
           <h1>Entrar</h1>
           <p className="muted" style={{ margin: '4px 0 0' }}>Use o e-mail e a senha que a gerência cadastrou para você.</p>
