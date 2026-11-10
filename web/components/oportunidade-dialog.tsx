@@ -2,9 +2,10 @@
 
 import { useState, type FormEvent } from 'react';
 import { ETAPAS, ORIGENS } from '@/lib/constantes';
-import { ajustaFechamento, cliente, produto } from '@/lib/calculos';
+import { api } from '@/lib/api';
+import { cliente, nomeUsuario, produto, produtosAtivos, responsaveis } from '@/lib/calculos';
 import { BRL, uid } from '@/lib/formato';
-import type { EtapaId, Oportunidade } from '@/lib/tipos';
+import type { DadosOportunidade, EtapaId, Oportunidade } from '@/lib/tipos';
 import { useCrm } from './crm-provider';
 import { ConfirmButton, DlgHead, Modal } from './modal';
 
@@ -27,9 +28,11 @@ export function OportunidadeDialog({ op }: { op: Partial<Oportunidade> | null })
 }
 
 function FormOportunidade({ o }: { o: Partial<Oportunidade> }) {
-  const { db, alterar, toast, fecharDialogo } = useCrm();
+  const { db, usuario, executar, toast, fecharDialogo } = useCrm();
   const novo = !o.id;
-  const prods = db.config.produtos;
+  const prods = produtosAtivos(db);
+  const resps = responsaveis(db);
+  const [salvando, setSalvando] = useState(false);
   const linha = (i: Partial<{ produtoId: string; kg: number; precoKg: number }> = {}): LinhaItem => {
     const pid = i.produtoId || prods[0]?.id || '';
     return { key: uid(), produtoId: pid, kg: i.kg != null ? String(i.kg) : '', precoKg: String(i.precoKg ?? produto(db, pid)?.precoKg ?? '') };
@@ -42,47 +45,36 @@ function FormOportunidade({ o }: { o: Partial<Oportunidade> }) {
   const mudaItem = (key: string, patch: Partial<LinhaItem>) =>
     setItens(lst => lst.map(i => (i.key === key ? { ...i, ...patch } : i)));
 
-  function salvarOp(e: FormEvent<HTMLFormElement>) {
+  async function salvarOp(e: FormEvent<HTMLFormElement>) {
     e.preventDefault();
     const fd = Object.fromEntries(new FormData(e.currentTarget)) as Record<string, string>;
     if (!fd.clienteId) {
       toast('Escolha o cliente antes de salvar.');
       return;
     }
-    const lista = itens
-      .map(i => ({ produtoId: i.produtoId, kg: +i.kg || 0, precoKg: +i.precoKg || 0 }))
-      .filter(i => i.kg > 0);
-    alterar(d => {
-      let alvo = d.oportunidades.find(x => x.id === o.id);
-      if (!alvo) {
-        alvo = { id: uid(), criadoEm: Date.now(), fechadoEm: null } as Oportunidade;
-        d.oportunidades.push(alvo);
-      }
-      const antes = alvo.etapa;
-      Object.assign(alvo, {
-        clienteId: fd.clienteId,
-        titulo: fd.titulo || 'Oportunidade',
-        etapa: etapaSel,
-        responsavel: fd.responsavel ?? '',
-        origem: fd.origem ?? '',
-        prazo: fd.prazo ?? '',
-        proximaAcao: fd.proximaAcao ?? '',
-        motivoPerda: fd.motivoPerda ?? alvo.motivoPerda ?? '',
-        obs: fd.obs ?? '',
-        itens: lista,
-      });
-      ajustaFechamento(alvo, antes);
-    });
-    fecharDialogo();
-    toast('Oportunidade salva.');
+    const dados: DadosOportunidade = {
+      clienteId: fd.clienteId,
+      titulo: fd.titulo || 'Oportunidade',
+      etapa: etapaSel,
+      responsavelId: fd.responsavelId || null,
+      origem: fd.origem ?? '',
+      prazo: fd.prazo ?? '',
+      proximaAcao: fd.proximaAcao ?? '',
+      motivoPerda: fd.motivoPerda ?? o.motivoPerda ?? '',
+      obs: fd.obs ?? '',
+      itens: itens
+        .map(i => ({ produtoId: i.produtoId, kg: +i.kg || 0, precoKg: +i.precoKg || 0 }))
+        .filter(i => i.kg > 0),
+    };
+    setSalvando(true);
+    const ok = await executar(() => (o.id ? api.salvarOportunidade(o.id, dados) : api.criarOportunidade(dados)), 'Oportunidade salva.');
+    setSalvando(false);
+    if (ok !== false) fecharDialogo();
   }
 
-  function excluir() {
-    alterar(d => {
-      d.oportunidades = d.oportunidades.filter(x => x.id !== o.id);
-    });
-    fecharDialogo();
-    toast('Oportunidade excluída.');
+  async function excluir() {
+    const ok = await executar(() => api.excluirOportunidade(o.id!), 'Oportunidade excluída.');
+    if (ok !== false) fecharDialogo();
   }
 
   const clientesOrdenados = [...db.clientes].sort((a, b) => a.nome.localeCompare(b.nome));
@@ -123,10 +115,14 @@ function FormOportunidade({ o }: { o: Partial<Oportunidade> }) {
           </label>
           <label className="fld">
             <span>Responsável</span>
-            <select name="responsavel" defaultValue={noLista(db.config.responsaveis, o.responsavel)}>
-              {db.config.responsaveis.map(r => (
-                <option key={r}>{r}</option>
+            <select name="responsavelId" defaultValue={o.responsavelId ?? usuario.id}>
+              <option value="">Sem responsável</option>
+              {resps.map(r => (
+                <option key={r.id} value={r.id}>{r.nome}</option>
               ))}
+              {o.responsavelId && !resps.some(r => r.id === o.responsavelId) && (
+                <option value={o.responsavelId}>{nomeUsuario(db, o.responsavelId)} (inativo)</option>
+              )}
             </select>
           </label>
           <label className="fld">
@@ -165,7 +161,9 @@ function FormOportunidade({ o }: { o: Partial<Oportunidade> }) {
                       {p.nome}
                     </option>
                   ))}
-                  {i.produtoId && !produto(db, i.produtoId) && <option value={i.produtoId}>Produto removido</option>}
+                  {i.produtoId && !prods.some(p => p.id === i.produtoId) && (
+                    <option value={i.produtoId}>{produto(db, i.produtoId)?.nome ?? 'Produto'} (fora do catálogo)</option>
+                  )}
                 </select>
                 <input className="num" type="number" min="0" step="0.5" placeholder="0" aria-label="Quilos" value={i.kg} onChange={e => mudaItem(i.key, { kg: e.target.value })} />
                 <span className="unit">kg</span>
@@ -205,7 +203,7 @@ function FormOportunidade({ o }: { o: Partial<Oportunidade> }) {
         <button type="button" className="btn ghost" onClick={fecharDialogo}>
           Cancelar
         </button>
-        <button className="btn primary">Salvar</button>
+        <button className="btn primary" disabled={salvando}>{salvando ? 'Salvando…' : 'Salvar'}</button>
       </footer>
     </form>
   );

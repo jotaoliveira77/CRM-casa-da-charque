@@ -1,9 +1,10 @@
 'use client';
 
-import type { FormEvent } from 'react';
+import { useState, type FormEvent } from 'react';
 import { TIPOS } from '@/lib/constantes';
-import { uid } from '@/lib/formato';
-import type { Cliente } from '@/lib/tipos';
+import { api } from '@/lib/api';
+import { nomeUsuario, responsaveis } from '@/lib/calculos';
+import type { Cliente, DadosCliente } from '@/lib/tipos';
 import { useCrm } from './crm-provider';
 import { ConfirmButton, DlgHead, Modal } from './modal';
 
@@ -17,37 +18,39 @@ export function ClienteFormDialog({ cli }: { cli: Partial<Cliente> | null }) {
 }
 
 function FormCliente({ c }: { c: Partial<Cliente> }) {
-  const { db, alterar, toast, fecharDialogo, fecharDrawer, abrirCli } = useCrm();
+  const { db, usuario, executar, fecharDialogo, fecharDrawer, abrirCli } = useCrm();
+  const [salvando, setSalvando] = useState(false);
   const novo = !c.id;
-  const resps = db.config.responsaveis;
+  const resps = responsaveis(db);
 
-  function salvarCli(e: FormEvent<HTMLFormElement>) {
+  async function salvarCli(e: FormEvent<HTMLFormElement>) {
     e.preventDefault();
     const fd = Object.fromEntries(new FormData(e.currentTarget)) as Record<string, string>;
-    fd.uf = (fd.uf || '').toUpperCase();
-    const id = c.id ?? uid();
-    alterar(d => {
-      let alvo = d.clientes.find(x => x.id === id);
-      if (!alvo) {
-        alvo = { id, criadoEm: Date.now() } as Cliente;
-        d.clientes.push(alvo);
-      }
-      Object.assign(alvo, fd);
-    });
+    const dados: DadosCliente = {
+      nome: fd.nome,
+      doc: fd.doc ?? '',
+      tipo: fd.tipo,
+      tel: fd.tel ?? '',
+      whatsapp: fd.whatsapp ?? '',
+      email: fd.email ?? '',
+      cidade: fd.cidade ?? '',
+      uf: (fd.uf || '').toUpperCase(),
+      responsavelId: fd.responsavelId || null,
+      obs: fd.obs ?? '',
+    };
+    setSalvando(true);
+    const salvo = await executar(() => (c.id ? api.salvarCliente(c.id, dados) : api.criarCliente(dados)), 'Cliente salvo.');
+    setSalvando(false);
+    if (salvo === false) return;
     fecharDialogo();
-    toast('Cliente salvo.');
-    if (novo) abrirCli(id);
+    if (novo) abrirCli(salvo.id);
   }
 
-  function excluir() {
-    alterar(d => {
-      d.clientes = d.clientes.filter(x => x.id !== c.id);
-      d.oportunidades = d.oportunidades.filter(o => o.clienteId !== c.id);
-      d.interacoes = d.interacoes.filter(i => i.clienteId !== c.id);
-    });
+  async function excluir() {
+    const ok = await executar(() => api.excluirCliente(c.id!), 'Cliente excluído.');
+    if (ok === false) return;
     fecharDialogo();
     fecharDrawer();
-    toast('Cliente excluído.');
   }
 
   return (
@@ -89,14 +92,18 @@ function FormCliente({ c }: { c: Partial<Cliente> }) {
           </label>
           <label className="fld">
             <span>UF</span>
-            <input name="uf" maxLength={2} defaultValue={c.uf ?? 'PE'} />
+            <input name="uf" maxLength={2} minLength={2} required defaultValue={c.uf ?? 'PE'} />
           </label>
           <label className="fld span2">
             <span>Responsável comercial</span>
-            <select name="responsavel" defaultValue={c.responsavel && resps.includes(c.responsavel) ? c.responsavel : resps[0]}>
+            <select name="responsavelId" defaultValue={novo ? (c.responsavelId ?? usuario.id) : (c.responsavelId ?? '')}>
+              <option value="">Sem responsável</option>
               {resps.map(r => (
-                <option key={r}>{r}</option>
+                <option key={r.id} value={r.id}>{r.nome}</option>
               ))}
+              {c.responsavelId && !resps.some(r => r.id === c.responsavelId) && (
+                <option value={c.responsavelId}>{nomeUsuario(db, c.responsavelId)} (inativo)</option>
+              )}
             </select>
           </label>
           <label className="fld span2">
@@ -111,7 +118,7 @@ function FormCliente({ c }: { c: Partial<Cliente> }) {
         <button type="button" className="btn ghost" onClick={fecharDialogo}>
           Cancelar
         </button>
-        <button className="btn primary">Salvar</button>
+        <button className="btn primary" disabled={salvando}>{salvando ? 'Salvando…' : 'Salvar'}</button>
       </footer>
     </form>
   );

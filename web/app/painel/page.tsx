@@ -13,7 +13,7 @@ import {
 import { BRL0, NUM, PCT, diasAtras, fmtData, isoDia, parseDia, relDias } from '@/lib/formato';
 
 export default function PainelPage() {
-  const { db, abrirOp, abrirCli } = useCrm();
+  const { db, usuario, abrirOp, abrirCli } = useCrm();
   const [per, setPer] = useState<PeriodoId>('mes');
   const p = periodo(per);
   const vs = vendasEntre(db, p.s, p.e);
@@ -60,7 +60,7 @@ export default function PainelPage() {
     .sort((a, b) => a.compras[0].fechadoEm! - b.compras[0].fechadoEm!)
     .slice(0, 6);
 
-  const novaOp = () => abrirOp({ etapa: 'novo', responsavel: db.config.responsaveis[0], origem: ORIGENS[0], itens: [] });
+  const novaOp = () => abrirOp({ etapa: 'novo', responsavelId: usuario.id, origem: ORIGENS[0], itens: [] });
 
   return (
     <>
@@ -223,7 +223,7 @@ export default function PainelPage() {
                         clienteId: c.id,
                         titulo: 'Recompra',
                         etapa: 'proposta',
-                        responsavel: c.responsavel,
+                        responsavelId: c.responsavelId,
                         origem: 'Recompra',
                         prazo: isoDia(Date.now() + 3 * DAY),
                         proximaAcao: 'Oferecer repetição do último pedido',

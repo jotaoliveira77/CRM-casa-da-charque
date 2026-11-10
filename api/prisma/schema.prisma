@@ -1,0 +1,145 @@
+// Modelo de dados do CRM Casa da Charque (PostgreSQL)
+
+generator client {
+  provider      = "prisma-client-js"
+  binaryTargets = ["native", "linux-musl-openssl-3.0.x"]
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+enum Papel {
+  ADMIN
+  VENDEDOR
+}
+
+/// Etapas do funil de vendas. "ganha" é uma venda; a data da venda é fechadoEm.
+enum Etapa {
+  novo
+  qualificacao
+  necessidade
+  proposta
+  negociacao
+  aguardando
+  ganha
+  perdida
+}
+
+/// Pessoas que entram no sistema: vendedores e gerência (ADMIN).
+model Usuario {
+  id         String   @id @default(cuid())
+  nome       String
+  email      String   @unique
+  senhaHash  String   @map("senha_hash")
+  papel      Papel    @default(VENDEDOR)
+  ativo      Boolean  @default(true)
+  criadoEm   DateTime @default(now()) @map("criado_em")
+
+  clientes      Cliente[]
+  oportunidades Oportunidade[]
+  interacoes    Interacao[]
+
+  @@map("usuarios")
+}
+
+model Cliente {
+  id            String   @id @default(cuid())
+  nome          String
+  doc           String   @default("") /// CPF ou CNPJ
+  tel           String   @default("")
+  whatsapp      String   @default("")
+  email         String   @default("")
+  cidade        String   @default("")
+  uf            String   @default("PE") @db.Char(2)
+  tipo          String /// Varejo, Atacado, Restaurante, Distribuidor, Mercadinho, Feirante
+  obs           String   @default("")
+  responsavelId String?  @map("responsavel_id")
+  criadoEm      DateTime @default(now()) @map("criado_em")
+  atualizadoEm  DateTime @updatedAt @map("atualizado_em")
+
+  responsavel   Usuario?       @relation(fields: [responsavelId], references: [id], onDelete: SetNull)
+  oportunidades Oportunidade[]
+  interacoes    Interacao[]
+
+  @@index([nome])
+  @@map("clientes")
+}
+
+/// Catálogo. Produtos removidos ficam inativos para não quebrar o histórico de vendas.
+model Produto {
+  id      String  @id @default(cuid())
+  nome    String
+  precoKg Decimal @map("preco_kg") @db.Decimal(10, 2)
+  ativo   Boolean @default(true)
+
+  itens ItemOportunidade[]
+
+  @@map("produtos")
+}
+
+model Oportunidade {
+  id            String    @id @default(cuid())
+  clienteId     String    @map("cliente_id")
+  titulo        String
+  etapa         Etapa     @default(novo)
+  responsavelId String?   @map("responsavel_id")
+  origem        String    @default("")
+  prazo         DateTime? @db.Date
+  proximaAcao   String    @default("") @map("proxima_acao")
+  motivoPerda   String    @default("") @map("motivo_perda")
+  obs           String    @default("")
+  criadoEm      DateTime  @default(now()) @map("criado_em")
+  fechadoEm     DateTime? @map("fechado_em")
+  atualizadoEm  DateTime  @updatedAt @map("atualizado_em")
+
+  cliente     Cliente            @relation(fields: [clienteId], references: [id], onDelete: Cascade)
+  responsavel Usuario?           @relation(fields: [responsavelId], references: [id], onDelete: SetNull)
+  itens       ItemOportunidade[]
+
+  @@index([etapa])
+  @@index([clienteId])
+  @@index([fechadoEm])
+  @@map("oportunidades")
+}
+
+/// Produto de uma oportunidade: quilos × preço por quilo negociado.
+model ItemOportunidade {
+  id             String  @id @default(cuid())
+  oportunidadeId String  @map("oportunidade_id")
+  produtoId      String  @map("produto_id")
+  kg             Decimal @db.Decimal(10, 2)
+  precoKg        Decimal @map("preco_kg") @db.Decimal(10, 2)
+
+  oportunidade Oportunidade @relation(fields: [oportunidadeId], references: [id], onDelete: Cascade)
+  produto      Produto      @relation(fields: [produtoId], references: [id], onDelete: Restrict)
+
+  @@index([oportunidadeId])
+  @@map("itens_oportunidade")
+}
+
+/// Registro de contato com o cliente (ligação, WhatsApp, visita, e-mail, balcão).
+model Interacao {
+  id        String   @id @default(cuid())
+  clienteId String   @map("cliente_id")
+  usuarioId String?  @map("usuario_id")
+  canal     String
+  nota      String
+  data      DateTime @default(now())
+
+  cliente Cliente  @relation(fields: [clienteId], references: [id], onDelete: Cascade)
+  usuario Usuario? @relation(fields: [usuarioId], references: [id], onDelete: SetNull)
+
+  @@index([clienteId])
+  @@map("interacoes")
+}
+
+/// Linha única (id = 1) com as configurações gerais.
+model Configuracao {
+  id         Int     @id @default(1)
+  metaMensal Decimal @default(0) @map("meta_mensal") @db.Decimal(12, 2)
+  exemplo    Boolean @default(false) /// true enquanto os dados forem os de exemplo
+
+  @@map("configuracao")
+}

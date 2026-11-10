@@ -19,14 +19,14 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
   return (
     <html lang="pt-BR" className={`${display.variable} ${body.variable} ${mono.variable}`}>
       <body>
-        <div className="app">
-          <Sidebar />
-          <main id="main">
-            <CrmProvider>
+        <CrmProvider>
+          <div className="app">
+            <Sidebar />
+            <main id="main">
               <div className="view">{children}</div>
-            </CrmProvider>
-          </main>
-        </div>
+            </main>
+          </div>
+        </CrmProvider>
       </body>
     </html>
   );

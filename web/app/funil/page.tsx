@@ -4,12 +4,13 @@ import { useRef, useState, type CSSProperties } from 'react';
 import { useCrm } from '@/components/crm-provider';
 import { BannerExemplo } from '@/components/banner-exemplo';
 import { ABERTAS, ETAPAS, ORIGENS, etapa } from '@/lib/constantes';
-import { ajustaFechamento, atrasada, cliente, kgOp, porPrazo, somaValor, valorOp } from '@/lib/calculos';
+import { api } from '@/lib/api';
+import { atrasada, cliente, kgOp, nomeUsuario, porPrazo, responsaveis, somaValor, valorOp } from '@/lib/calculos';
 import { BRL0, NUM, diasAtras, fmtData, parseDia } from '@/lib/formato';
-import type { EtapaId, Oportunidade } from '@/lib/tipos';
+import type { EtapaId } from '@/lib/tipos';
 
 export default function FunilPage() {
-  const { db, alterar, toast, abrirOp } = useCrm();
+  const { db, usuario, executar, abrirOp } = useCrm();
   const [busca, setBusca] = useState('');
   const [resp, setResp] = useState('');
   const [colOver, setColOver] = useState<EtapaId | null>(null);
@@ -18,25 +19,20 @@ export default function FunilPage() {
 
   const q = busca.toLowerCase();
   const ops = db.oportunidades.filter(
-    o => (!resp || o.responsavel === resp) && (!q || `${cliente(db, o.clienteId)?.nome} ${o.titulo}`.toLowerCase().includes(q)),
+    o => (!resp || o.responsavelId === resp) && (!q || `${cliente(db, o.clienteId)?.nome} ${o.titulo}`.toLowerCase().includes(q)),
   );
   const pipeline = somaValor(ops.filter(o => ABERTAS.includes(o.etapa)));
 
-  function soltar(destino: EtapaId) {
+  async function soltar(destino: EtapaId) {
     const id = arrastando.current;
     arrastando.current = null;
     setArrastandoId(null);
     setColOver(null);
     const o = db.oportunidades.find(x => x.id === id);
     if (!o || o.etapa === destino) return;
-    const movida: Oportunidade = { ...o, etapa: destino };
-    ajustaFechamento(movida, o.etapa);
-    alterar(d => {
-      const alvo = d.oportunidades.find(x => x.id === id);
-      if (alvo) Object.assign(alvo, { etapa: movida.etapa, fechadoEm: movida.fechadoEm });
-    });
-    toast(`Movida para “${etapa(destino).nome}”.`);
-    if (destino === 'perdida' && !o.motivoPerda) abrirOp(movida);
+    const ok = await executar(() => api.moverOportunidade(o.id, destino), `Movida para “${etapa(destino).nome}”.`);
+    // Venda perdida sem motivo: abre o formulário para registrar o motivo.
+    if (ok !== false && destino === 'perdida' && !o.motivoPerda) abrirOp({ ...o, etapa: destino });
   }
 
   return (
@@ -52,11 +48,11 @@ export default function FunilPage() {
           <input className="input" type="search" placeholder="Buscar cliente…" value={busca} onChange={e => setBusca(e.target.value)} aria-label="Buscar no funil" />
           <select className="input" value={resp} onChange={e => setResp(e.target.value)} aria-label="Responsável">
             <option value="">Todos os vendedores</option>
-            {db.config.responsaveis.map(r => <option key={r}>{r}</option>)}
+            {responsaveis(db).map(r => <option key={r.id} value={r.id}>{r.nome}</option>)}
           </select>
           <button
             className="btn primary"
-            onClick={() => abrirOp({ etapa: 'novo', responsavel: resp || db.config.responsaveis[0], origem: ORIGENS[0], itens: [] })}
+            onClick={() => abrirOp({ etapa: 'novo', responsavelId: resp || usuario.id, origem: ORIGENS[0], itens: [] })}
           >
             + Nova oportunidade
           </button>
@@ -141,7 +137,7 @@ export default function FunilPage() {
                           )}
                         </div>
                         <div className="c-row muted">
-                          <span>{o.responsavel}</span>
+                          <span>{nomeUsuario(db, o.responsavelId)}</span>
                           <span>{o.origem}</span>
                         </div>
                         {o.proximaAcao && aberta && <div className="c-next"><b>Próx.</b>{o.proximaAcao}</div>}

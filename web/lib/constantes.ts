@@ -16,8 +16,6 @@ export const ORIGENS = ['Balcão CEASA', 'Indicação', 'WhatsApp', 'Instagram',
 export const CANAIS = ['Ligação', 'WhatsApp', 'Visita', 'E-mail', 'Balcão'];
 export const SITUACOES = ['Recorrente', 'Novo', 'Inativo', 'Prospecto'] as const;
 export const DAY = 864e5;
-/** Mesma chave da v1 em HTML, para não perder dados já cadastrados no navegador. */
-export const STORAGE_KEY = 'crm-casa-da-charque-v1';
 
 export const etapa = (id: EtapaId) => ETAPAS.find(e => e.id === id)!;
 export const isAberta = (id: EtapaId) => ABERTAS.includes(id);

@@ -5,7 +5,7 @@ import { useCrm } from './crm-provider';
 
 export function BannerExemplo() {
   const { db } = useCrm();
-  if (!db.exemplo) return null;
+  if (!db.config.exemplo) return null;
   return (
     <div className="banner">
       <span>

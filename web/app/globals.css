@@ -63,10 +63,9 @@ button, input, select, textarea { font: inherit; color: inherit; }
 /* Estrutura */
 .app { display: grid; grid-template-columns: 228px 1fr; height: 100%; }
 .side { background: var(--side); color: var(--side-ink); display: flex; flex-direction: column; gap: 24px; padding: 22px 14px; }
-.brand { display: flex; align-items: center; gap: 10px; padding: 0 8px; }
-.brand-mark { width: 34px; height: 34px; border-radius: 8px; background: #8b1e2d; display: grid; place-items: center; font-family: var(--f-display); font-weight: 700; color: #fff; font-size: 15px; flex: none; }
-.brand-name { font-family: var(--f-display); font-weight: 700; font-size: 16px; line-height: 1.1; }
-.brand-sub { font-size: 11px; color: var(--side-muted); letter-spacing: .04em; }
+.brand { display: flex; flex-direction: column; align-items: center; gap: 6px; padding: 0 8px; }
+.brand-logo { display: block; width: 100%; max-width: 184px; height: auto; }
+.brand-sub { font-size: 11px; color: var(--side-muted); letter-spacing: .08em; text-transform: uppercase; font-weight: 600; }
 .nav { display: flex; flex-direction: column; gap: 2px; }
 .nav a { display: flex; align-items: center; gap: 10px; padding: 9px 10px; border-radius: 8px; color: var(--side-muted); text-decoration: none; font-weight: 500; }
 .nav a:hover { background: var(--side-hover); color: var(--side-ink); }
@@ -226,10 +225,11 @@ textarea.code { font: 12px/1.4 var(--f-mono); min-height: 140px; width: 100%; bo
 @media (max-width: 760px) {
   .app { grid-template-columns: 1fr; grid-template-rows: auto 1fr; }
   .side { flex-direction: row; align-items: center; gap: 12px; padding: 10px max(12px, env(safe-area-inset-right, 0px)) 10px max(12px, env(safe-area-inset-left, 0px)); overflow-x: auto; }
-  .brand-name, .brand-sub, .side-foot { display: none; }
-  .brand { padding: 0; }
+  .brand-sub, .side-foot { display: none; }
+  .brand { padding: 0; flex: none; }
+  .brand-logo { width: auto; height: 38px; }
   .nav { flex-direction: row; }
-  .nav a { padding: 8px 10px; font-size: 13px; }
+  .nav a { padding: 8px 10px; font-size: 13px; white-space: nowrap; }
   .nav svg { display: none; }
   .view { padding-block: 18px 40px; padding-left: max(16px, env(safe-area-inset-left, 0px)); padding-right: max(16px, env(safe-area-inset-right, 0px)); }
   .grid2, .facts { grid-template-columns: 1fr; }
@@ -244,3 +244,25 @@ textarea.code { font: 12px/1.4 var(--f-mono); min-height: 140px; width: 100%; bo
 a.btn { text-decoration: none; color: inherit; }
 a.btn.primary { color: var(--accent-ink); }
 .carregando { padding: 40px 28px; color: var(--muted); }
+
+/* Login */
+.login-wrap { min-height: 100%; display: grid; place-items: center; padding: 24px 16px; background: var(--side); }
+.login { width: min(380px, 100%); background: var(--surface); border-radius: 14px; padding: 28px 24px; display: flex; flex-direction: column; gap: 16px; box-shadow: 0 24px 64px rgba(0,0,0,.3); }
+.login-logo { display: block; width: 220px; max-width: 100%; height: auto; margin: 0 auto 4px; }
+.login-btn { justify-content: center; padding: 10px 14px; }
+.login-btn:disabled { opacity: .7; cursor: wait; }
+.login-erro { margin: 0; background: var(--bad-soft); color: var(--bad); border-radius: 8px; padding: 8px 12px; font-size: 13px; }
+
+/* Usuário logado na barra lateral */
+.side-user { margin-top: auto; display: flex; flex-direction: column; gap: 6px; padding: 10px 8px 0; border-top: 1px solid var(--side-hover); }
+.side-user .nome { font-weight: 600; font-size: 13px; color: var(--side-ink); }
+.side-user .papel { font-size: 11px; color: var(--side-muted); }
+.side-user button { align-self: flex-start; background: none; border: 1px solid var(--side-hover); color: var(--side-muted); border-radius: 6px; padding: 4px 10px; font-size: 12px; cursor: pointer; }
+.side-user button:hover { color: var(--side-ink); border-color: var(--side-muted); }
+.side-foot { margin-top: 0; }
+.user-row { display: grid; grid-template-columns: minmax(0, 1fr) auto; gap: 4px 10px; align-items: center; padding: 8px 0; border-top: 1px solid var(--line); }
+.user-row:first-child { border-top: 0; padding-top: 0; }
+@media (max-width: 760px) {
+  .side-user { margin-top: 0; margin-left: auto; border-top: 0; padding: 0; flex-direction: row; align-items: center; }
+  .side-user .nome, .side-user .papel { display: none; }
+}
