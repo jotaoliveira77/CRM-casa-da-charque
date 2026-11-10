@@ -54,6 +54,26 @@ Depois acesse `http://localhost:8765/crm-casa-da-charque.html`.
 
 Na primeira abertura, o sistema carrega **dados de exemplo fictícios**: 14 clientes, cerca de 50 vendas nos últimos 6 meses e 12 oportunidades em andamento. Para usar com dados reais, vá em **Ajustes → Apagar dados e começar do zero**.
 
+### Versão em Next.js (pasta `web/`)
+
+A mesma interface foi reescrita como aplicação Next.js 16 (App Router, React 19, TypeScript), base para o back-end da Sprint 3. Ela usa a mesma chave do `localStorage`, então os dados cadastrados na v1 em HTML aparecem nela se for aberta no mesmo endereço.
+
+Requer Node.js 20.9 ou superior.
+
+```bash
+cd web
+npm install
+npm run dev
+```
+
+Depois acesse `http://localhost:3000`. As telas viram rotas: `/painel`, `/funil`, `/clientes`, `/ajustes`.
+
+| Pasta | O que tem |
+| --- | --- |
+| `web/app/` | Layout com a barra lateral, estilos globais e uma página por tela |
+| `web/components/` | Estado do CRM (`crm-provider.tsx`), diálogos de oportunidade e cliente, ficha do cliente, gráfico mensal |
+| `web/lib/` | Tipos, constantes, formatação, cálculos, dados de exemplo e armazenamento |
+
 ## Tecnologias
 
 - HTML, CSS e JavaScript puro (sem frameworks nem build)
