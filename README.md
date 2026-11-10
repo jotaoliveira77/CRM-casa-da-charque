@@ -4,7 +4,7 @@ Sistema web de gestão do relacionamento com clientes (CRM) para a **Casa da Cha
 
 Projeto de Intervenção da disciplina **Atividades Práticas Interdisciplinares de Extensão II**, do curso de Ciência da Computação da UNINASSAU, campus Graças, Grupo 10, turma 8NB, 2026.
 
-> **Versão atual: v1 (protótipo funcional, só front-end).** Os dados ficam salvos no navegador. Ver [Limitações da v1](#limitações-da-v1).
+> **Versão atual: v2**, com front em Next.js, API REST, banco PostgreSQL e login por vendedor, tudo em Docker. Ver [Versão 2](#versão-2-nextjs--api--postgresql). O protótipo v1 (só front-end, dados no navegador) continua em `crm-casa-da-charque.html`.
 
 ## Funcionalidades
 
@@ -54,11 +54,59 @@ Depois acesse `http://localhost:8765/crm-casa-da-charque.html`.
 
 Na primeira abertura, o sistema carrega **dados de exemplo fictícios**: 14 clientes, cerca de 50 vendas nos últimos 6 meses e 12 oportunidades em andamento. Para usar com dados reais, vá em **Ajustes → Apagar dados e começar do zero**.
 
-### Versão em Next.js (pasta `web/`)
+## Versão 2 (Next.js + API + PostgreSQL)
 
-A mesma interface foi reescrita como aplicação Next.js 16 (App Router, React 19, TypeScript), base para o back-end da Sprint 3. Ela usa a mesma chave do `localStorage`, então os dados cadastrados na v1 em HTML aparecem nela se for aberta no mesmo endereço.
+Os dados ficam num banco PostgreSQL no servidor, compartilhados por toda a equipe, e cada pessoa entra com o próprio e-mail e senha.
 
-Requer Node.js 20.9 ou superior.
+| Serviço | Pasta | Tecnologia | Porta |
+| --- | --- | --- | --- |
+| Front | `web/` | Next.js 16, React 19, TypeScript | 3000 |
+| API | `api/` | Node.js, Fastify 5, Prisma 6, Zod | 3333 |
+| Banco | — | PostgreSQL 17 | 5432 (só local) |
+
+O navegador fala só com o front: o Next repassa as chamadas `/api/*` para a API. Assim o cookie de sessão fica no mesmo endereço e não é preciso configurar CORS.
+
+### Como executar com Docker
+
+Requer o [Docker Desktop](https://www.docker.com/products/docker-desktop/) (no Windows, com WSL 2).
+
+```bash
+docker compose up -d --build
+```
+
+Depois acesse `http://localhost:3000`. Na primeira subida, a API cria as tabelas, o usuário da gerência, três vendedores e os dados de exemplo. O e-mail e a senha de desenvolvimento estão em [`.env.example`](.env.example).
+
+Antes de usar com dados reais:
+
+1. Copie `.env.example` para `.env` e troque `POSTGRES_PASSWORD`, `JWT_SECRET` e `SEED_SENHA`.
+2. Em **Ajustes**, troque a senha da gerência, cadastre os vendedores reais e clique em **Apagar dados e começar do zero**.
+
+Comandos úteis:
+
+```bash
+docker compose logs -f api
+```
+
+```bash
+docker compose down
+```
+
+`docker compose down -v` também apaga o banco (volume `dados-postgres`).
+
+### Como executar sem Docker (desenvolvimento)
+
+Requer Node.js 20.9 ou superior e um PostgreSQL rodando (pode ser só o do Docker: `docker compose up -d db`).
+
+```bash
+cd api
+cp .env.example .env
+npm install
+npx prisma migrate deploy
+npm run seed:dev
+npm run dev
+```
+
+Em outro terminal:
 
 ```bash
 cd web
@@ -66,13 +114,60 @@ npm install
 npm run dev
 ```
 
-Depois acesse `http://localhost:3000`. As telas viram rotas: `/painel`, `/funil`, `/clientes`, `/ajustes`.
+### Acesso e permissões
+
+| Papel | Pode |
+| --- | --- |
+| Vendedor | Ver tudo; cadastrar e editar clientes, oportunidades e contatos; baixar a cópia de segurança |
+| Gerência (`ADMIN`) | Tudo do vendedor, mais: meta mensal, catálogo de produtos, usuários (criar, trocar senha, mudar acesso, desativar) e apagar ou recarregar os dados |
+
+A sessão dura 12 horas e fica num cookie `httpOnly`. Senhas são guardadas com bcrypt.
+
+### Banco de dados
+
+O modelo está em [`api/prisma/schema.prisma`](api/prisma/schema.prisma) e as migrações em `api/prisma/migrations/`.
+
+| Tabela | Conteúdo |
+| --- | --- |
+| `usuarios` | Nome, e-mail, hash da senha, papel (`ADMIN`/`VENDEDOR`), ativo |
+| `clientes` | Cadastro do cliente e vendedor responsável |
+| `produtos` | Catálogo com preço por kg; produtos removidos ficam inativos para não quebrar o histórico |
+| `oportunidades` | Etapa do funil, responsável, prazo, próxima ação, data de fechamento |
+| `itens_oportunidade` | Produtos de cada oportunidade: kg × preço por kg negociado |
+| `interacoes` | Contatos com o cliente (canal, nota, quem registrou) |
+| `configuracao` | Linha única com a meta mensal e se os dados são de exemplo |
+
+Valores em dinheiro e quilos usam `DECIMAL`. A data de fechamento (`fechado_em`) é marcada pela API quando a oportunidade entra em "Venda fechada" ou "Venda perdida", e apagada se ela voltar para uma etapa aberta.
+
+### API REST
+
+Todas as rotas ficam sob `/api` e, exceto login e `health`, exigem sessão. Erros voltam como `{ "erro": "mensagem em português" }`.
+
+| Método e rota | O que faz |
+| --- | --- |
+| `POST /auth/login` · `POST /auth/logout` · `GET /auth/me` | Sessão |
+| `GET /usuarios` · `POST /usuarios`* · `PATCH /usuarios/:id`* | Usuários |
+| `GET/POST /clientes` · `GET/PUT/DELETE /clientes/:id` | Clientes (excluir apaga oportunidades e contatos dele) |
+| `GET/POST /oportunidades` · `PUT/DELETE /oportunidades/:id` | Oportunidades com os itens |
+| `PATCH /oportunidades/:id/etapa` | Move no funil |
+| `GET/POST /interacoes` | Contatos |
+| `GET /produtos` · `PUT /produtos`* | Catálogo (o `PUT` recebe a lista inteira) |
+| `GET /configuracao` · `PUT /configuracao`* | Meta mensal |
+| `GET /backup` | Cópia de todos os dados em JSON (sem senhas) |
+| `POST /admin/reset`* | `{ "modo": "zerar" }` ou `{ "modo": "exemplo" }` |
+| `GET /health` | Verificação de saúde (usada pelo Docker) |
+
+\* Só gerência.
+
+### Estrutura
 
 | Pasta | O que tem |
 | --- | --- |
-| `web/app/` | Layout com a barra lateral, estilos globais e uma página por tela |
-| `web/components/` | Estado do CRM (`crm-provider.tsx`), diálogos de oportunidade e cliente, ficha do cliente, gráfico mensal |
-| `web/lib/` | Tipos, constantes, formatação, cálculos, dados de exemplo e armazenamento |
+| `api/src/rotas/` | Um arquivo por recurso da API |
+| `api/src/exemplo.ts` · `api/src/seed.ts` | Dados de exemplo e preparação do banco vazio |
+| `web/app/` | Layout, estilos e uma página por tela (`/painel`, `/funil`, `/clientes`, `/ajustes`) |
+| `web/components/` | Estado e sessão (`crm-provider.tsx`), login, diálogos, ficha do cliente, gráfico |
+| `web/lib/` | Cliente da API, tipos, constantes, formatação e cálculos do painel |
 
 ## Tecnologias
 
@@ -128,7 +223,7 @@ A navegação usa a âncora da URL: `#painel`, `#funil`, `#clientes`, `#ajustes`
 
 | Sprint | Entrega |
 | --- | --- |
-| Sprint 3 (22/10 a 13/11) | Validar a v1 com a Casa da Charque; back-end com API REST, banco de dados e login por vendedor |
+| Sprint 3 (22/10 a 13/11) | Validar a v1 com a Casa da Charque; back-end com API REST, banco de dados e login por vendedor (feito na v2) |
 | Sprint 4 (16/11 a 04/12) | Cadastrar os clientes reais, treinar a equipe e fazer a apresentação final |
 | Futuro | Integração com WhatsApp, emissão de pedidos e estoque, ERP/financeiro, follow-up automático, IA para análise de clientes |
 
